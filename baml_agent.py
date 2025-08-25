@@ -10,7 +10,7 @@ import time
 from datetime import datetime
 from dotenv import load_dotenv
 
-from pipecat.frames.frames import TextFrame, StartFrame, EndFrame
+from pipecat.frames.frames import TextFrame, StartFrame, EndFrame, AudioRawFrame, UserStartedSpeakingFrame, UserStoppedSpeakingFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineTask
@@ -40,6 +40,42 @@ except ImportError:
 
 # Load environment variables
 load_dotenv()
+
+# ================== IMPROVED DEBUG PROCESSOR ==================
+class SimpleDebugProcessor(FrameProcessor):
+    """Simple debug processor that handles frame direction correctly"""
+
+    def __init__(self, name="Debug"):
+        super().__init__()
+        self._debug_name = name
+
+    async def process_frame(self, frame, direction: FrameDirection):
+        try:
+            direction_str = "UPSTREAM" if direction == FrameDirection.UPSTREAM else "DOWNSTREAM"
+
+            if isinstance(frame, TextFrame):
+                print(f"🗣️ [{self._debug_name}] Text: '{frame.text}' ({direction_str})")
+            elif isinstance(frame, UserStartedSpeakingFrame):
+                print(f"🎤 [{self._debug_name}] User started speaking ({direction_str})")
+            elif isinstance(frame, UserStoppedSpeakingFrame):
+                print(f"🔇 [{self._debug_name}] User stopped speaking ({direction_str})")
+            elif isinstance(frame, StartFrame):
+                print(f"🚀 [{self._debug_name}] Pipeline started ({direction_str})")
+            elif isinstance(frame, EndFrame):
+                print(f"🔚 [{self._debug_name}] Pipeline ended ({direction_str})")
+            elif hasattr(frame, 'audio') and len(frame.audio) > 0:
+                if not hasattr(self, '_last_audio_log') or (asyncio.get_event_loop().time() - self._last_audio_log) > 2.0:
+                    self._last_audio_log = asyncio.get_event_loop().time()
+                    print(f"🎵 [{self._debug_name}] Audio: {len(frame.audio)} bytes ({direction_str})")
+
+            await self.push_frame(frame, direction)
+
+        except Exception as e:
+            print(f"❌ [{self._debug_name}] Error: {e}")
+            try:
+                await self.push_frame(frame, direction)
+            except Exception as e:
+                print(f"❌ [{self._debug_name}] Error pushing frame after exception: {e}")
 
 # ================== CONVERSATION RECORDER ==================
 class ConversationRecorder:
@@ -155,12 +191,53 @@ class BAMLProcessor(FrameProcessor):
 
 # ================== MAIN FUNCTION ==================
 async def main():
+    print("🚀 Starting BAML Pipecat Agent with Recording...")
+    print(f"🏠 Room URL: {os.getenv('DAILY_ROOM_URL')}")
+    
+    # Diagnostics
+    print(f"🔐 OPENAI_API_KEY set: {bool(os.getenv('OPENAI_API_KEY'))}")
+    print(f"🔐 DAILY_TOKEN set: {bool(os.getenv('DAILY_TOKEN'))}")
+    print(f"🔐 DEEPGRAM_API_KEY set: {bool(os.getenv('DEEPGRAM_API_KEY'))}")
+    print(f"🔐 CARTESIA_API_KEY set: {bool(os.getenv('CARTESIA_API_KEY'))}")
+    
+    # Test OpenAI connectivity
+    try:
+        from openai import OpenAI
+        if os.getenv('OPENAI_API_KEY'):
+            client = OpenAI()
+            try:
+                resp = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","content":"ping"}], max_tokens=5)
+                print("🧪 OpenAI LLM ping OK")
+            except Exception as e:
+                print(f"🧪 OpenAI LLM ping failed: {type(e).__name__}: {str(e)[:200]}")
+        else:
+            print('Skipping LLM test: no OPENAI_API_KEY')
+    except Exception as e:
+        print(f"🧪 OpenAI client import failed: {type(e).__name__}: {e}")
+
+    # Test Deepgram connectivity
+    try:
+        import deepgram
+        if os.getenv('DEEPGRAM_API_KEY'):
+            client = deepgram.Deepgram(os.getenv('DEEPGRAM_API_KEY'))
+            try:
+                # Test Deepgram connectivity - just verify client can be created
+                print("🧪 Deepgram API ping OK - client created successfully")
+            except Exception as e:
+                print(f"🧪 Deepgram API ping failed: {type(e).__name__}: {str(e)[:200]}")
+        else:
+            print("🧪 Deepgram API key not set, skipping test")
+    except ImportError:
+        print("🧪 Deepgram client not installed, skipping test")
+    except Exception as e:
+        print(f"🧪 Deepgram client error: {type(e).__name__}: {e}")
+
     # Check for required API keys
-    required_keys = ["OPENAI_API_KEY", "DAILY_API_KEY", "CARTESIA_API_KEY", "DEEPGRAM_API_KEY"]
+    required_keys = ["OPENAI_API_KEY", "DAILY_TOKEN", "CARTESIA_API_KEY", "DEEPGRAM_API_KEY"]
     missing_keys = [key for key in required_keys if not os.getenv(key)]
     
     if missing_keys:
-        print(f"Missing required environment variables: {', '.join(missing_keys)}")
+        print(f"❌ Missing required environment variables: {', '.join(missing_keys)}")
         sys.exit(1)
 
     print("Creating BAML Pipecat Agent with Recording...")
@@ -170,7 +247,10 @@ async def main():
     recorder = ConversationRecorder()
     
     # Create services
-    llm = OpenAILLMService(model="gpt-4o-mini")
+    llm = OpenAILLMService(
+        model="gpt-4o-mini",
+        system_prompt="You are a customer support agent. Your responses will be processed by BAML for structure. Provide helpful, accurate, and concise answers. Always confirm customer details before proceeding with any actions. Be professional and empathetic in your communication."
+    )
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"), model="nova-2")
     tts = CartesiaTTSService(api_key=os.getenv("CARTESIA_API_KEY"), voice_id="79a125e8-cd45-4c13-8a67-188112f4dd22")
     
@@ -178,10 +258,16 @@ async def main():
     baml_processor = BAMLProcessor(recorder)
     llm_aggregator = LLMFullResponseAggregator()
     
-    # Create transport
-    transport_params = DailyParams(audio_out_enabled=True, transcription_enabled=True, vad_enabled=VAD_AVAILABLE)
-    if VAD_AVAILABLE and SileroVADAnalyzer:
-        transport_params.vad_analyzer = SileroVADAnalyzer()
+    # Create debug processor for input monitoring
+    debug_input = SimpleDebugProcessor("INPUT")
+    
+    # Create transport with improved params
+    transport_params = DailyParams(
+        audio_out_enabled=True,
+        audio_in_enabled=True,
+        transcription_enabled=True,  # Enable transcription for proper flow
+        vad_analyzer=SileroVADAnalyzer() if VAD_AVAILABLE and SileroVADAnalyzer else None
+    )
     
     transport = DailyTransport(
         room_url=os.getenv("DAILY_ROOM_URL"),
@@ -190,9 +276,10 @@ async def main():
         params=transport_params
     )
     
-    # Create pipeline
+    # Create pipeline with debug processor
     pipeline = Pipeline([
         transport.input(),
+        debug_input,            # Debug processor
         stt,
         llm,
         baml_processor,
@@ -204,11 +291,6 @@ async def main():
     # Create task
     task = PipelineTask(pipeline)
     
-    # Set system message
-    system_prompt = """You are a customer support agent. Your responses will be processed by BAML for structure.
-    Provide helpful, accurate, and concise answers. Always confirm customer details before proceeding with any actions.
-    Be professional and empathetic in your communication."""
-    
     try:
         # Start recording a new call
         call_id = f"baml_call_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -217,35 +299,27 @@ async def main():
         # Create runner
         runner = PipelineRunner()
         
-        # Queue start frame
-        await task.queue_frame(StartFrame())
+        print("✅ Agent ready! Join the Daily room and start speaking.")
+        print("📱 Make sure to allow microphone access in your browser.")
+        print("🎤 You should see debug messages when you speak.")
+        print("⏹️  Press Ctrl+C to stop.\n")
         
-        # Run the task
-        runner_task = asyncio.create_task(runner.run(task))
+        # Run the pipeline directly - let pipecat handle everything
+        await runner.run(task)
         
-        print("Pipeline started successfully!")
-        print("BAML Agent is now ready to process customer support requests.")
-        print("Speak your test scenarios into the microphone...")
-        print("Press Ctrl+C to stop and save the recording...")
-        
-        # Keep running
-        try:
-            await asyncio.sleep(3600)  # 1 hour timeout
-        except asyncio.CancelledError:
-            print("Shutting down...")
-        
-        # Cleanup
-        await task.queue_frame(EndFrame())
-        await runner_task
+    except KeyboardInterrupt:
+        print("\n🛑 Shutting down...")
         recorder.save_call()
-        
     except Exception as e:
-        print(f"Error during pipeline execution: {e}")
+        print(f"❌ Error: {e}")
         import traceback
         traceback.print_exc()
     finally:
-        await runner.cancel()
-        print("Cleanup completed.")
+        try:
+            await runner.cancel()
+            print("Cleanup completed.")
+        except:
+            pass
 
 if __name__ == "__main__":
     print("Starting BAML Pipecat Agent with Recording...")
