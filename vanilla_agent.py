@@ -3,7 +3,7 @@ Vinalla Pipcat Agent
 """
 
 from pipecat import Agent
-from pipecat.llss import OpenAI
+from pipecat.llms import OpenAI
 from pipecat.tts import OpenAITTS
 from pipecat.stt import OpenAISTT
 
