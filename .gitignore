@@ -1,2 +1,5 @@
 venv/
+openai_tester.py
+audio_flow_tester.py
 .env
+*.env
