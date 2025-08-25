@@ -1,0 +1,222 @@
+[
+  {
+    "scenario_id": "simple_query",
+    "agent_type": "vanilla",
+    "timestamp": "2025-08-25T15:51:20.089899",
+    "latency": {
+      "agent_creation": 0.061225175857543945,
+      "conversation": 0.1003868579864502,
+      "total": 0.16216087341308594
+    },
+    "accuracy": {
+      "overall": 0.8666666666666667,
+      "intent_recognition": 1.0,
+      "context_retention": 0.8,
+      "handoff_appropriate": 0.8
+    },
+    "handoff_success": 0.8,
+    "error_occurred": false,
+    "error_message": "",
+    "response_text": "Our business hours are Monday through Friday, 9 AM to 6 PM EST.",
+    "context_retained": 0.8,
+    "intent_recognized": 1.0
+  },
+  {
+    "scenario_id": "product_info",
+    "agent_type": "vanilla",
+    "timestamp": "2025-08-25T15:51:20.220628",
+    "latency": {
+      "agent_creation": 0.02951812744140625,
+      "conversation": 0.10109806060791016,
+      "total": 0.13063287734985352
+    },
+    "accuracy": {
+      "overall": 0.8666666666666667,
+      "intent_recognition": 1.0,
+      "context_retention": 0.8,
+      "handoff_appropriate": 0.8
+    },
+    "handoff_success": 0.8,
+    "error_occurred": false,
+    "error_message": "",
+    "response_text": "Our premium plan includes advanced features, priority support, and unlimited usage for $29/month.",
+    "context_retained": 0.8,
+    "intent_recognized": 1.0
+  },
+  {
+    "scenario_id": "technical_issue",
+    "agent_type": "vanilla",
+    "timestamp": "2025-08-25T15:51:20.358996",
+    "latency": {
+      "agent_creation": 0.037138938903808594,
+      "conversation": 0.10114312171936035,
+      "total": 0.13828611373901367
+    },
+    "accuracy": {
+      "overall": 0.9333333333333332,
+      "intent_recognition": 1.0,
+      "context_retention": 1.0,
+      "handoff_appropriate": 0.8
+    },
+    "handoff_success": 0.8,
+    "error_occurred": false,
+    "error_message": "",
+    "response_text": "I can help you with that. Let me check your account status. Can you provide your username?",
+    "context_retained": 1.0,
+    "intent_recognized": 1.0
+  },
+  {
+    "scenario_id": "billing_question",
+    "agent_type": "vanilla",
+    "timestamp": "2025-08-25T15:51:20.483866",
+    "latency": {
+      "agent_creation": 0.023661136627197266,
+      "conversation": 0.10112500190734863,
+      "total": 0.12479400634765625
+    },
+    "accuracy": {
+      "overall": 0.9333333333333332,
+      "intent_recognition": 1.0,
+      "context_retention": 1.0,
+      "handoff_appropriate": 0.8
+    },
+    "handoff_success": 0.8,
+    "error_occurred": false,
+    "error_message": "",
+    "response_text": "I apologize for the double charge. Let me investigate this billing issue for you.",
+    "context_retained": 1.0,
+    "intent_recognized": 1.0
+  },
+  {
+    "scenario_id": "feature_request",
+    "agent_type": "vanilla",
+    "timestamp": "2025-08-25T15:51:20.624223",
+    "latency": {
+      "agent_creation": 0.03920722007751465,
+      "conversation": 0.10110020637512207,
+      "total": 0.14031004905700684
+    },
+    "accuracy": {
+      "overall": 0.8666666666666667,
+      "intent_recognition": 1.0,
+      "context_retention": 0.8,
+      "handoff_appropriate": 0.8
+    },
+    "handoff_success": 0.8,
+    "error_occurred": false,
+    "error_message": "",
+    "response_text": "Thank you for the feature request. I'll forward this to our development team.",
+    "context_retained": 0.8,
+    "intent_recognized": 1.0
+  },
+  {
+    "scenario_id": "complaint_handling",
+    "agent_type": "vanilla",
+    "timestamp": "2025-08-25T15:51:20.752252",
+    "latency": {
+      "agent_creation": 0.026814937591552734,
+      "conversation": 0.10116410255432129,
+      "total": 0.12798404693603516
+    },
+    "accuracy": {
+      "overall": 0.9333333333333332,
+      "intent_recognition": 1.0,
+      "context_retention": 1.0,
+      "handoff_appropriate": 0.8
+    },
+    "handoff_success": 0.8,
+    "error_occurred": false,
+    "error_message": "",
+    "response_text": "I sincerely apologize for the service interruption. We experienced technical difficulties yesterday.",
+    "context_retained": 1.0,
+    "intent_recognized": 1.0
+  },
+  {
+    "scenario_id": "account_management",
+    "agent_type": "vanilla",
+    "timestamp": "2025-08-25T15:51:20.886675",
+    "latency": {
+      "agent_creation": 0.033258914947509766,
+      "conversation": 0.10109710693359375,
+      "total": 0.13436508178710938
+    },
+    "accuracy": {
+      "overall": 0.8666666666666667,
+      "intent_recognition": 1.0,
+      "context_retention": 0.8,
+      "handoff_appropriate": 0.8
+    },
+    "handoff_success": 0.8,
+    "error_occurred": false,
+    "error_message": "",
+    "response_text": "I understand your request. Let me help you with that.",
+    "context_retained": 0.8,
+    "intent_recognized": 1.0
+  },
+  {
+    "scenario_id": "pricing_inquiry",
+    "agent_type": "vanilla",
+    "timestamp": "2025-08-25T15:51:21.018714",
+    "latency": {
+      "agent_creation": 0.030839920043945312,
+      "conversation": 0.10114407539367676,
+      "total": 0.1319870948791504
+    },
+    "accuracy": {
+      "overall": 0.8666666666666667,
+      "intent_recognition": 1.0,
+      "context_retention": 0.8,
+      "handoff_appropriate": 0.8
+    },
+    "handoff_success": 0.8,
+    "error_occurred": false,
+    "error_message": "",
+    "response_text": "We offer three plans: Basic ($9/month), Standard ($19/month), and Premium ($29/month).",
+    "context_retained": 0.8,
+    "intent_recognized": 1.0
+  },
+  {
+    "scenario_id": "integration_question",
+    "agent_type": "vanilla",
+    "timestamp": "2025-08-25T15:51:21.165046",
+    "latency": {
+      "agent_creation": 0.045149803161621094,
+      "conversation": 0.10111212730407715,
+      "total": 0.14626812934875488
+    },
+    "accuracy": {
+      "overall": 0.8666666666666667,
+      "intent_recognition": 1.0,
+      "context_retention": 0.8,
+      "handoff_appropriate": 0.8
+    },
+    "handoff_success": 0.8,
+    "error_occurred": false,
+    "error_message": "",
+    "response_text": "Yes, our service integrates with Slack through our official integration.",
+    "context_retained": 0.8,
+    "intent_recognized": 1.0
+  },
+  {
+    "scenario_id": "escalation_scenario",
+    "agent_type": "vanilla",
+    "timestamp": "2025-08-25T15:51:21.287546",
+    "latency": {
+      "agent_creation": 0.021299123764038086,
+      "conversation": 0.10114288330078125,
+      "total": 0.12244606018066406
+    },
+    "accuracy": {
+      "overall": 0.9333333333333332,
+      "intent_recognition": 1.0,
+      "context_retention": 1.0,
+      "handoff_appropriate": 0.8
+    },
+    "handoff_success": 0.8,
+    "error_occurred": false,
+    "error_message": "",
+    "response_text": "I understand your request. Let me help you with that.",
+    "context_retained": 1.0,
+    "intent_recognized": 1.0
+  }
+]

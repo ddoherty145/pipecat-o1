@@ -1,0 +1,172 @@
+[
+  {
+    "scenario_id": "simple_query",
+    "agent_type": "baml",
+    "timestamp": "2025-08-25T15:51:19.927188",
+    "latency": {
+      "total": 1.502295732498169
+    },
+    "accuracy": {
+      "overall": 0.0
+    },
+    "handoff_success": false,
+    "error_occurred": true,
+    "error_message": "cannot import name 'create_baml_agent' from 'baml_agent' (/Users/froztydavie/dev/pipecat-o1/baml_agent.py)",
+    "response_text": "",
+    "context_retained": false,
+    "intent_recognized": false
+  },
+  {
+    "scenario_id": "product_info",
+    "agent_type": "baml",
+    "timestamp": "2025-08-25T15:51:19.927218",
+    "latency": {
+      "total": 3.814697265625e-06
+    },
+    "accuracy": {
+      "overall": 0.0
+    },
+    "handoff_success": false,
+    "error_occurred": true,
+    "error_message": "cannot import name 'create_baml_agent' from 'baml_agent' (/Users/froztydavie/dev/pipecat-o1/baml_agent.py)",
+    "response_text": "",
+    "context_retained": false,
+    "intent_recognized": false
+  },
+  {
+    "scenario_id": "technical_issue",
+    "agent_type": "baml",
+    "timestamp": "2025-08-25T15:51:19.927226",
+    "latency": {
+      "total": 2.6226043701171875e-06
+    },
+    "accuracy": {
+      "overall": 0.0
+    },
+    "handoff_success": false,
+    "error_occurred": true,
+    "error_message": "cannot import name 'create_baml_agent' from 'baml_agent' (/Users/froztydavie/dev/pipecat-o1/baml_agent.py)",
+    "response_text": "",
+    "context_retained": false,
+    "intent_recognized": false
+  },
+  {
+    "scenario_id": "billing_question",
+    "agent_type": "baml",
+    "timestamp": "2025-08-25T15:51:19.927231",
+    "latency": {
+      "total": 2.1457672119140625e-06
+    },
+    "accuracy": {
+      "overall": 0.0
+    },
+    "handoff_success": false,
+    "error_occurred": true,
+    "error_message": "cannot import name 'create_baml_agent' from 'baml_agent' (/Users/froztydavie/dev/pipecat-o1/baml_agent.py)",
+    "response_text": "",
+    "context_retained": false,
+    "intent_recognized": false
+  },
+  {
+    "scenario_id": "feature_request",
+    "agent_type": "baml",
+    "timestamp": "2025-08-25T15:51:19.927236",
+    "latency": {
+      "total": 1.9073486328125e-06
+    },
+    "accuracy": {
+      "overall": 0.0
+    },
+    "handoff_success": false,
+    "error_occurred": true,
+    "error_message": "cannot import name 'create_baml_agent' from 'baml_agent' (/Users/froztydavie/dev/pipecat-o1/baml_agent.py)",
+    "response_text": "",
+    "context_retained": false,
+    "intent_recognized": false
+  },
+  {
+    "scenario_id": "complaint_handling",
+    "agent_type": "baml",
+    "timestamp": "2025-08-25T15:51:19.927241",
+    "latency": {
+      "total": 3.0994415283203125e-06
+    },
+    "accuracy": {
+      "overall": 0.0
+    },
+    "handoff_success": false,
+    "error_occurred": true,
+    "error_message": "cannot import name 'create_baml_agent' from 'baml_agent' (/Users/froztydavie/dev/pipecat-o1/baml_agent.py)",
+    "response_text": "",
+    "context_retained": false,
+    "intent_recognized": false
+  },
+  {
+    "scenario_id": "account_management",
+    "agent_type": "baml",
+    "timestamp": "2025-08-25T15:51:19.927245",
+    "latency": {
+      "total": 2.1457672119140625e-06
+    },
+    "accuracy": {
+      "overall": 0.0
+    },
+    "handoff_success": false,
+    "error_occurred": true,
+    "error_message": "cannot import name 'create_baml_agent' from 'baml_agent' (/Users/froztydavie/dev/pipecat-o1/baml_agent.py)",
+    "response_text": "",
+    "context_retained": false,
+    "intent_recognized": false
+  },
+  {
+    "scenario_id": "pricing_inquiry",
+    "agent_type": "baml",
+    "timestamp": "2025-08-25T15:51:19.927249",
+    "latency": {
+      "total": 2.1457672119140625e-06
+    },
+    "accuracy": {
+      "overall": 0.0
+    },
+    "handoff_success": false,
+    "error_occurred": true,
+    "error_message": "cannot import name 'create_baml_agent' from 'baml_agent' (/Users/froztydavie/dev/pipecat-o1/baml_agent.py)",
+    "response_text": "",
+    "context_retained": false,
+    "intent_recognized": false
+  },
+  {
+    "scenario_id": "integration_question",
+    "agent_type": "baml",
+    "timestamp": "2025-08-25T15:51:19.927253",
+    "latency": {
+      "total": 1.9073486328125e-06
+    },
+    "accuracy": {
+      "overall": 0.0
+    },
+    "handoff_success": false,
+    "error_occurred": true,
+    "error_message": "cannot import name 'create_baml_agent' from 'baml_agent' (/Users/froztydavie/dev/pipecat-o1/baml_agent.py)",
+    "response_text": "",
+    "context_retained": false,
+    "intent_recognized": false
+  },
+  {
+    "scenario_id": "escalation_scenario",
+    "agent_type": "baml",
+    "timestamp": "2025-08-25T15:51:19.927258",
+    "latency": {
+      "total": 1.9073486328125e-06
+    },
+    "accuracy": {
+      "overall": 0.0
+    },
+    "handoff_success": false,
+    "error_occurred": true,
+    "error_message": "cannot import name 'create_baml_agent' from 'baml_agent' (/Users/froztydavie/dev/pipecat-o1/baml_agent.py)",
+    "response_text": "",
+    "context_retained": false,
+    "intent_recognized": false
+  }
+]
