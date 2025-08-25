@@ -1,11 +1,13 @@
 """
-BAML Pipecat Agent for current pipecat version 
+BAML Pipecat Agent with Conversation Recording
 """
 
 import asyncio
 import os
 import sys
-from typing import AsyncGenerator
+import json
+import time
+from datetime import datetime
 from dotenv import load_dotenv
 
 from pipecat.frames.frames import TextFrame, StartFrame, EndFrame
@@ -19,20 +21,13 @@ from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.services.daily import DailyParams, DailyTransport
 
-# Try to import VAD analyzer - handle different versions
+# Try to import VAD analyzer
 try:
-    # Newer version import
     from pipecat.processors.vad.silero import SileroVADAnalyzer
     VAD_AVAILABLE = True
 except ImportError:
-    try:
-        # Older version import
-        from pipecat.vad.silero import SileroVADAnalyzer
-        VAD_AVAILABLE = True
-    except ImportError:
-        print("Warning: SileroVADAnalyzer not available. VAD will be disabled.")
-        VAD_AVAILABLE = False
-        SileroVADAnalyzer = None
+    VAD_AVAILABLE = False
+    SileroVADAnalyzer = None
 
 # Import BAML
 try:
@@ -46,48 +41,119 @@ except ImportError:
 # Load environment variables
 load_dotenv()
 
+# ================== CONVERSATION RECORDER ==================
+class ConversationRecorder:
+    def __init__(self):
+        self.conversation = []
+        self.current_call_id = None
+        self.last_user_input = None
+        self.last_input_time = None
+        
+    def start_new_call(self, call_id):
+        self.current_call_id = call_id
+        self.conversation = []
+        self.last_user_input = None
+        self.last_input_time = None
+        print(f"📝 Started recording call: {call_id}")
+        
+    def record_user_input(self, text):
+        self.last_user_input = text
+        self.last_input_time = time.time()
+        self.conversation.append({
+            "type": "user",
+            "text": text,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    def record_agent_response(self, text, latency_ms):
+        if self.last_user_input and self.last_input_time:
+            self.conversation.append({
+                "type": "agent",
+                "text": text,
+                "latency_ms": latency_ms,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+    def save_call(self):
+        if self.current_call_id and self.conversation:
+            filename = f"evaluation/sample_calls/{self.current_call_id}.json"
+            os.makedirs("evaluation/sample_calls", exist_ok=True)
+            
+            call_data = {
+                "call_id": self.current_call_id,
+                "timestamp": datetime.now().isoformat(),
+                "conversation": self.conversation,
+                "total_turns": len([t for t in self.conversation if t["type"] == "user"]),
+                "avg_latency": self._calculate_avg_latency()
+            }
+            
+            with open(filename, "w") as f:
+                json.dump(call_data, f, indent=2)
+            print(f"💾 Saved call recording: {filename}")
+            
+    def _calculate_avg_latency(self):
+        latencies = [t["latency_ms"] for t in self.conversation if "latency_ms" in t]
+        return sum(latencies) / len(latencies) if latencies else 0
+
+# ================== MODIFIED BAML PROCESSOR ==================
 class BAMLProcessor(FrameProcessor):
     """Custom processor that uses BAML for structured responses"""
     
-    def __init__(self):
-        # FIX: Call parent constructor properly
+    def __init__(self, recorder):
         super().__init__()
-        # Initialize any needed attributes
-        self._process_queue = asyncio.Queue()
-    
+        self.recorder = recorder
+        self.last_user_text = None
+        
     async def process_frame(self, frame, direction: FrameDirection):
-        # Only process text frames going downstream
-        if direction == FrameDirection.DOWNSTREAM and isinstance(frame, TextFrame):
+        # Capture user input from STT
+        if (direction == FrameDirection.UPSTREAM and 
+            isinstance(frame, TextFrame) and 
+            hasattr(frame, 'metadata') and 
+            frame.metadata.get('source') == 'stt'):
+            
+            self.last_user_text = frame.text
+            self.recorder.record_user_input(frame.text)
+            print(f"👤 User: {frame.text}")
+        
+        # Process agent responses with BAML
+        elif (direction == FrameDirection.DOWNSTREAM and 
+              isinstance(frame, TextFrame) and
+              self.last_user_text):
+            
+            start_time = time.time()
+            
             try:
                 if BAML_AVAILABLE:
-                    # Create BAML request
                     request = CustomerSupportRequest(
-                        user_message=frame.text,
+                        user_message=self.last_user_text,
                         context="customer support call"
                     )
-                    
-                    # Use BAML function for structured response
                     response = await b.CustomerSupport(request)
-                    
-                    # Create new frame with BAML response
                     structured_frame = TextFrame(response.message)
+                    
+                    # Record the interaction
+                    latency = (time.time() - start_time) * 1000
+                    self.recorder.record_agent_response(response.message, latency)
+                    print(f"🤖 Agent: {response.message}")
+                    print(f"⏱️  Latency: {latency:.0f}ms")
+                    
                     await self.push_frame(structured_frame, direction)
+                    self.last_user_text = None
                     return
                 else:
-                    # Fallback: just use the original text
-                    print("BAML not available, using fallback response")
+                    # Fallback
                     await self.push_frame(frame, direction)
                     return
                 
             except Exception as e:
                 print(f"BAML processing error: {e}")
-                # Fall back to original frame
                 await self.push_frame(frame, direction)
                 return
         
-        # Pass through other frames unchanged
+        # Pass through other frames
         await self.push_frame(frame, direction)
 
+# ================== MAIN FUNCTION ==================
 async def main():
     # Check for required API keys
     required_keys = ["OPENAI_API_KEY", "DAILY_API_KEY", "CARTESIA_API_KEY", "DEEPGRAM_API_KEY"]
@@ -97,41 +163,23 @@ async def main():
         print(f"Missing required environment variables: {', '.join(missing_keys)}")
         sys.exit(1)
 
-    print("Creating BAML Pipecat Agent...")
+    print("Creating BAML Pipecat Agent with Recording...")
     print("=" * 50)
 
+    # Create conversation recorder
+    recorder = ConversationRecorder()
+    
     # Create services
-    print("Creating services...")
-    llm = OpenAILLMService(
-        model="gpt-4o-mini"
-    )
+    llm = OpenAILLMService(model="gpt-4o-mini")
+    stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"), model="nova-2")
+    tts = CartesiaTTSService(api_key=os.getenv("CARTESIA_API_KEY"), voice_id="79a125e8-cd45-4c13-8a67-188112f4dd22")
     
-    stt = DeepgramSTTService(
-        api_key=os.getenv("DEEPGRAM_API_KEY"),
-        model="nova-2"
-    )
-    
-    tts = CartesiaTTSService(
-        api_key=os.getenv("CARTESIA_API_KEY"),
-        voice_id="79a125e8-cd45-4c13-8a67-188112f4dd22"
-    )
-    
-    print("Services created successfully!")
-    
-    # Create BAML processor
-    baml_processor = BAMLProcessor()
-    
-    # Create aggregator
+    # Create BAML processor with recorder
+    baml_processor = BAMLProcessor(recorder)
     llm_aggregator = LLMFullResponseAggregator()
     
-    # Create transport with conditional VAD
-    transport_params = DailyParams(
-        audio_out_enabled=True,
-        transcription_enabled=True,
-        vad_enabled=VAD_AVAILABLE,
-    )
-    
-    # Add VAD analyzer if available
+    # Create transport
+    transport_params = DailyParams(audio_out_enabled=True, transcription_enabled=True, vad_enabled=VAD_AVAILABLE)
     if VAD_AVAILABLE and SileroVADAnalyzer:
         transport_params.vad_analyzer = SileroVADAnalyzer()
     
@@ -142,44 +190,29 @@ async def main():
         params=transport_params
     )
     
-    print("Transport created successfully!")
-    
-    # BAML-structured system prompt
-    system_prompt = """You are a customer support agent. Your responses will be processed by BAML for structure.
-    Provide helpful, accurate, and concise answers. Always confirm customer details before proceeding with any actions.
-    Be professional and empathetic in your communication."""
-    
-    # Create pipeline with BAML processor
-    print("Creating pipeline...")
+    # Create pipeline
     pipeline = Pipeline([
         transport.input(),
         stt,
         llm,
-        baml_processor,     # BAML processing after LLM
+        baml_processor,
         tts,
         transport.output(),
         llm_aggregator
     ])
     
-    print("Pipeline created successfully!")
-    
     # Create task
     task = PipelineTask(pipeline)
     
-    print("Pipeline task created!")
+    # Set system message
+    system_prompt = """You are a customer support agent. Your responses will be processed by BAML for structure.
+    Provide helpful, accurate, and concise answers. Always confirm customer details before proceeding with any actions.
+    Be professional and empathetic in your communication."""
     
-    # Set initial messages - using the new approach
-    # Instead of LLMMessagesFrame, we'll set the system message directly on the LLM service
     try:
-        # Try the new way to set system message
-        llm.set_system_message(system_prompt)
-        print("System message set on LLM service")
-    except AttributeError:
-        print("Warning: set_system_message not available, using fallback")
-        # Fallback: you might need to handle this differently
-
-    try:
-        print("Starting pipeline...")
+        # Start recording a new call
+        call_id = f"baml_call_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        recorder.start_new_call(call_id)
         
         # Create runner
         runner = PipelineRunner()
@@ -187,39 +220,35 @@ async def main():
         # Queue start frame
         await task.queue_frame(StartFrame())
         
-        # Run the task in the background
+        # Run the task
         runner_task = asyncio.create_task(runner.run(task))
         
         print("Pipeline started successfully!")
         print("BAML Agent is now ready to process customer support requests.")
-        print("Press Ctrl+C to stop...")
+        print("Speak your test scenarios into the microphone...")
+        print("Press Ctrl+C to stop and save the recording...")
         
-        # Keep the pipeline running until interrupted
+        # Keep running
         try:
-            await asyncio.sleep(3600)  # Run for 1 hour or until interrupted
+            await asyncio.sleep(3600)  # 1 hour timeout
         except asyncio.CancelledError:
             print("Shutting down...")
         
-        # Send an EndFrame to gracefully stop
+        # Cleanup
         await task.queue_frame(EndFrame())
-        
-        # Wait for the task to finish
         await runner_task
-        
-        print("Pipeline completed successfully!")
+        recorder.save_call()
         
     except Exception as e:
         print(f"Error during pipeline execution: {e}")
         import traceback
         traceback.print_exc()
     finally:
-        # Clean up
-        print("Cleaning up...")
         await runner.cancel()
         print("Cleanup completed.")
 
 if __name__ == "__main__":
-    print("Starting BAML Pipecat Agent...")
+    print("Starting BAML Pipecat Agent with Recording...")
     print("=" * 50)
     
     asyncio.run(main())

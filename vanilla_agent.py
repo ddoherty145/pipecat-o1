@@ -1,9 +1,12 @@
 """
-Vanilla Pipecat Agent using the new pipeline architecture
+Vanilla Pipecat Agent for fair comparison with BAML agent
 """
 
 import asyncio
 import os
+import json
+import time
+from datetime import datetime
 from dotenv import load_dotenv
 
 from pipecat.pipeline.pipeline import Pipeline
@@ -13,14 +16,58 @@ from pipecat.services.openai.stt import OpenAISTTService
 from pipecat.frames.frames import StartFrame, EndFrame, TextFrame
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineTask
+from pipecat.transports.services.daily import DailyParams, DailyTransport
 
 # Load environment variables
 load_dotenv()
 
+class ConversationRecorder:
+    def __init__(self):
+        self.conversation = []
+        self.current_call_id = None
+        
+    def start_new_call(self, call_id):
+        self.current_call_id = call_id
+        self.conversation = []
+        
+    def record_interaction(self, user_text, agent_text, latency_ms):
+        self.conversation.append({
+            "user": user_text,
+            "agent": agent_text,
+            "latency_ms": latency_ms,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    def save_call(self):
+        if self.current_call_id and self.conversation:
+            filename = f"evaluation/sample_calls/vanilla_{self.current_call_id}.json"
+            os.makedirs("evaluation/sample_calls", exist_ok=True)
+            
+            call_data = {
+                "call_id": self.current_call_id,
+                "agent_type": "vanilla",
+                "conversation": self.conversation
+            }
+            
+            with open(filename, "w") as f:
+                json.dump(call_data, f, indent=2)
+
 def create_vanilla_agent():
-    """Create a vanilla pipecat agent using the new pipeline architecture"""
+    """Create vanilla agent with Daily transport"""
     
-    # Create the services
+    # Create transport
+    transport = DailyTransport(
+        room_url=os.getenv("DAILY_ROOM_URL"),
+        token=os.getenv("DAILY_TOKEN"),
+        bot_name="Vanilla_Agent",
+        params=DailyParams(
+            audio_out_enabled=True,
+            transcription_enabled=True,
+            vad_enabled=False
+        )
+    )
+    
+    # Create services
     llm = OpenAILLMService(
         model="gpt-4o-mini",
         system_prompt="You are a helpful assistant for basic customer support calls."
@@ -29,83 +76,62 @@ def create_vanilla_agent():
     stt = OpenAISTTService()
     tts = OpenAITTSService()
     
-    # Create the pipeline connecting the services
-    # The flow is: STT -> LLM -> TTS
-    pipeline = Pipeline([stt, llm, tts])
+    # Create pipeline
+    pipeline = Pipeline([
+        transport.input(),
+        stt,
+        llm,
+        tts,
+        transport.output()
+    ])
     
-    return pipeline
+    return pipeline, transport
 
 async def main():
-    """Main function to run the agent"""
-    print("Creating vanilla agent pipeline...")
+    """Main function to run the vanilla agent"""
     
-    # Create the agent pipeline
-    agent = create_vanilla_agent()
+    # Check required keys
+    required_keys = ["OPENAI_API_KEY", "DAILY_API_KEY", "DAILY_ROOM_URL", "DAILY_TOKEN"]
+    missing_keys = [key for key in required_keys if not os.getenv(key)]
     
-    print("Pipeline created successfully!")
-    print("Services linked: STT → LLM → TTS")
+    if missing_keys:
+        print(f"Missing environment variables: {', '.join(missing_keys)}")
+        return
     
-    # Create a pipeline task
+    print("Creating Vanilla Pipecat Agent...")
+    
+    # Create recorder
+    recorder = ConversationRecorder()
+    
+    # Create agent
+    agent, transport = create_vanilla_agent()
     task = PipelineTask(agent)
     
-    print("Pipeline task created!")
-    
     try:
-        # Start the pipeline with a StartFrame
-        print("Starting pipeline...")
+        # Start recording
+        call_id = f"call_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        recorder.start_new_call(call_id)
         
-        # Create and run the task properly
+        # Start pipeline
         runner = PipelineRunner()
-        
-        # Queue the start frame
         await task.queue_frame(StartFrame())
-        
-        # Run the task in the background
         runner_task = asyncio.create_task(runner.run(task))
         
-        print("Pipeline started successfully!")
-        print("Pipeline is now ready to process audio/text frames.")
+        print("Vanilla agent ready! Join the Daily room to test.")
+        print("Press Ctrl+C when done to save recording.")
         
-        # Send a test text frame
-        print("Sending test message...")
-        await task.queue_frame(TextFrame("Hello, how are you?"))
+        # Keep running
+        await asyncio.sleep(3600)
         
-        # Wait a moment to show the pipeline is running
-        await asyncio.sleep(5)
-        
-        # Send an EndFrame to gracefully stop
-        print("Stopping pipeline...")
-        await task.queue_frame(EndFrame())
-        
-        # Wait for the task to finish
-        await runner_task
-        
-        print("Pipeline completed successfully!")
-        
-    except Exception as e:
-        print(f"Error during pipeline execution: {e}")
-        import traceback
-        traceback.print_exc()
+    except asyncio.CancelledError:
+        print("Shutting down...")
     finally:
-        # Clean up
-        print("Cleaning up...")
+        # Cleanup
+        await task.queue_frame(EndFrame())
+        await runner_task
+        recorder.save_call()
         await runner.cancel()
         print("Cleanup completed.")
 
 if __name__ == "__main__":
-    # Check if OpenAI API key is set
-    if not os.getenv("OPENAI_API_KEY"):
-        print("Error: OPENAI_API_KEY environment variable not set!")
-        print("Please set your OpenAI API key in a .env file or environment variable.")
-        print("\nYou can set it temporarily with:")
-        print("export OPENAI_API_KEY='your_actual_api_key'")
-        exit(1)
-    
-    print("Starting Vanilla Pipecat Agent...")
-    print("=" * 40)
-    
-    # Run the async main function
     asyncio.run(main())
-    
-    print("=" * 40)
-    print("Agent execution completed.")

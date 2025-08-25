@@ -1,0 +1,45 @@
+<!-- test-agent.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test BAML Agent</title>
+    <script src="https://unpkg.com/@daily-co/daily-js"></script>
+</head>
+<body>
+    <h1>Test BAML Agent</h1>
+    <button onclick="joinCall()">Join Call</button>
+    <button onclick="leaveCall()">Leave Call</button>
+    
+    <div id="call-container" style="width: 400px; height: 300px;"></div>
+    
+    <script>
+        let callFrame;
+        const DAILY_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyIjoicGlwZWNhdC1vMSIsInUiOiJBSSBBZ2VudCIsIm8iOnRydWUsImVyIjoiIiwiYW8iOmZhbHNlLCJ2byI6dHJ1ZSwiZCI6IjhiMWJmMzY5LTkwZjYtNDcxNS05NjgzLTY4MDM5MGNkMjRhZSIsImlhdCI6MTc1NjA4ODY2N30.tjrAnaZMMEBQxmcBwTsYDj7Y2SQy40oU_GpfFHBdzqM"; // Replace with your actual token
+        const ROOM_URL = "https://ddoherty145.daily.co/pipecat-o1";
+        
+        function joinCall() {
+            callFrame = window.DailyIframe.createFrame(
+                document.getElementById('call-container'),
+                {
+                    url: ROOM_URL,
+                    token: DAILY_TOKEN,
+                    showLeaveButton: true,
+                    iframeStyle: {
+                        width: '100%',
+                        height: '100%',
+                        border: '1px solid #ccc'
+                    }
+                }
+            );
+            
+            callFrame.join();
+        }
+        
+        function leaveCall() {
+            if (callFrame) {
+                callFrame.leave();
+            }
+        }
+    </script>
+</body>
+</html>
