@@ -1,3 +1,7 @@
-pipecat
-baml
+
+pipecat-ai
+baml-py
 openai
+python-dotenv
+asyncio
+websockets
